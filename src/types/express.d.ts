@@ -13,6 +13,8 @@ declare global {
         userId: string;
         githubId: string;
       };
+      /** Raw request body bytes — populated only on routes that use express.raw() */
+      rawBody?: Buffer;
     }
   }
 }

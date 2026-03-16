@@ -4,6 +4,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './lib/swagger';
 import { authRouter } from './modules/auth/auth.routes';
+import { webhookRouter } from './modules/webhook/webhook.routes';
 
 const app = express();
 
@@ -23,7 +24,6 @@ app.use(
   }),
 );
 
-app.use(express.json());
 
 /**
  * cookie-parser is required so that `req.cookies.refreshToken` is populated
@@ -34,6 +34,43 @@ app.use(cookieParser());
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
+
+/**
+ * MIDDLEWARE ORDER — CRITICAL
+ *
+ * The webhook route MUST be mounted BEFORE `express.json()` is applied
+ * globally. Here is why:
+ *
+ * `express.json()` is a destructive parser — it reads the raw bytes from the
+ * request stream and replaces them with a parsed JS object. Once it runs,
+ * the original byte stream is gone and cannot be recovered.
+ *
+ * The webhook handler needs the raw bytes to compute the HMAC-SHA256
+ * signature. So the webhook route brings its own `express.raw()` parser
+ * that captures the bytes as a Buffer without destroying them.
+ *
+ * If we mounted the webhook route AFTER `app.use(express.json())`, the
+ * global parser would have already consumed and replaced the body before
+ * the route-level `express.raw()` ever gets a chance to run. The HMAC
+ * would always fail.
+ *
+ * Solution: mount `/webhooks` first (with its own raw parser), then add
+ * the global `express.json()` for all remaining routes.
+ */
+app.use('/webhooks', webhookRouter);
+
+/**
+ * express.json() is intentionally placed HERE — after the webhook route.
+ *
+ * The webhook route uses express.raw() to keep req.body as a raw Buffer
+ * for HMAC validation. If express.json() ran first (as global middleware),
+ * it would parse and replace req.body with a JS object before the webhook
+ * handler ever ran — destroying the Buffer and making HMAC impossible.
+ *
+ * Placing express.json() here means it only applies to routes mounted below
+ * this point (/api/auth, /api/docs, /health) which all need parsed JSON.
+ */
+app.use(express.json());
 
 app.use('/api/auth', authRouter);
 
