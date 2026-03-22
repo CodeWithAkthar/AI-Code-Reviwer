@@ -117,7 +117,9 @@ export async function processReview(jobData: ReviewJobData) {
       // STEP 4: Model routing logic
       // We pick the model based on the first file in the chunk for simplicity.
       // (Advanced: evaluate all files and pick the most capable required).
-      const modelToUse = getModelForFile(chunk[0].filename);
+     const modelToUse = chunk.some(f => /auth|payment|security/i.test(f.filename))
+  ? 'llama-3.3-70b-versatile'
+  : getModelForFile(chunk[0].filename);
 
       // STEP 5: Build prompt
       const prompt = buildPrompt(chunk);
@@ -202,21 +204,21 @@ export async function processReview(jobData: ReviewJobData) {
         owner,
         repo,
         issue_number: prNumber, // PRs are fundamentally Issues in the GitHub API
-        body: `### AI Code Review Complete 🤖\n\nEverything looks good! No inline issues found.\n\**Score:** ${finalScore}/10`,
+        body: `### AI Code Review Complete 🤖\n\nEverything looks good! No inline issues found....\n\n**Score:** ${finalScore}/10`,
       });
     }
 
     // --------------------------------------------------------------------------
     // STEP 9: Save to MongoDB
     // --------------------------------------------------------------------------
-    await reviewDb.updateOne({
+    await reviewDb.updateOne({ _id: reviewDb._id },{$set:{
       status: 'completed',
       summary: finalSummary,
       score: finalScore,
       comments: allComments,
       tokensUsed: totalTokensUsed,
       model: chunks.length > 1 ? 'multiple' : getModelForFile((chunks[0] && chunks[0][0]) ? chunks[0][0].filename : ''),
-    });
+    }});
     console.log(`[ReviewService] 💾 Saved review result to MongoDB.`);
 
     // --------------------------------------------------------------------------
