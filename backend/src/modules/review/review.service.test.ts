@@ -4,7 +4,8 @@ dotenv.config();
 import { processReview } from './review.service';
 import mongoose from 'mongoose';
 
-const mockJob = {
+const mockJob: import('../../queues/reviewQueue').ReviewJobData = {
+  userId: new mongoose.Types.ObjectId().toString(),
   repoFullName: 'CodeWithAkthar/testing-backend',
   prNumber: 1,
   installationId: 118128171,

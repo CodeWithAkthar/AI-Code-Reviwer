@@ -7,6 +7,7 @@ import { Queue } from 'bullmq';
  * agree on the exact shape without runtime surprises.
  */
 export interface ReviewJobData {
+  userId: string;      // MongoDB ObjectId string — used to route WS events
   prNumber: number;
   repoFullName: string;
   installationId: number;

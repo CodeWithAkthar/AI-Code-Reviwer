@@ -16,6 +16,9 @@ interface GitHubPullRequestPayload {
   };
   repository: {
     full_name: string;
+    owner: {
+      id: number;
+    };
   };
   installation?: {
     id: number;
@@ -182,21 +185,29 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // STEP 4 — Enqueue Review Job
   // ─────────────────────────────────────────────────────────────────────────
-  //
-  // WHAT IS EXPONENTIAL BACKOFF?
-  // If the AI review API is temporarily unavailable, we do not want to hammer
-  // it with retries immediately. Exponential backoff means each retry waits
-  // twice as long as the previous:
-  //   Attempt 1 fails → wait 5s
-  //   Attempt 2 fails → wait 10s
-  //   Attempt 3 fails → wait 20s
-  // This gives the downstream system time to recover, and prevents a cascade
-  // of simultaneous retries from all queued jobs (the "thundering herd" problem).
+  // STEP 4.5 — Find matching User for WebSocket routing
+  // ─────────────────────────────────────────────────────────────────────────
+  // To route WebSocket events back to the browser, the worker needs to know
+  // the `userId` of the person who owns this repo. The webhook gives us the
+  // GitHub ID of the repo owner, so we look them up in our DB.
+  let userId = '';
+  try {
+    const { User } = await import('../auth/auth.model');
+    const ownerGithubId = payload.repository.owner.id.toString();
+    const userDoc = await User.findOne({ githubId: ownerGithubId });
+    if (userDoc) userId = userDoc._id.toString();
+  } catch (err) {
+    console.error('[Webhook] Failed to look up user for WS routing:', err);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // STEP 5 — Enqueue Review Job
+  // ─────────────────────────────────────────────────────────────────────────
   const job = await reviewQueue.add(
     'review-pr',
     {
+      userId,
       prNumber: payload.number,
       repoFullName: payload.repository.full_name,
       installationId: payload.installation?.id ?? 0,

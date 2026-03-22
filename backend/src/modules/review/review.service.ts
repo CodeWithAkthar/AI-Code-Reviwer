@@ -4,6 +4,7 @@ import { parseDiff, ParsedFile } from './review.parsers';
 import { buildPrompt, getModelForFile } from './review.prompts';
 import Groq from 'groq-sdk';
 import { Review, IReviewComment } from './review.model';
+import * as wsManager from '../../lib/wsManager';
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || '',
@@ -23,7 +24,7 @@ interface GroqReviewResponse {
  * Orchestrates the end-to-end AI review process for a PR.
  */
 export async function processReview(jobData: ReviewJobData) {
-  const { repoFullName, prNumber, installationId } = jobData;
+  const { userId, repoFullName, prNumber, installationId } = jobData;
   const [owner, repo] = repoFullName.split('/');
   
   console.log(`[ReviewService] Starting review for ${owner}/${repo}#${prNumber}`);
@@ -113,6 +114,18 @@ export async function processReview(jobData: ReviewJobData) {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       console.log(`[ReviewService] Processing chunk ${i + 1} of ${chunks.length}`);
+
+      // ── Event 2: review:progress ────────────────────────────────────────────
+      // Emitted before calling the LLM for each chunk so the UI shows which
+      // files are currently being processed in real-time.
+      wsManager.send(userId, {
+        type: 'review:progress',
+        prNumber,
+        repo: repoFullName,
+        chunk: i + 1,
+        totalChunks: chunks.length,
+        files: chunk.map(f => f.filename),
+      });
 
       // STEP 4: Model routing logic
       // We pick the model based on the first file in the chunk for simplicity.
@@ -221,12 +234,20 @@ export async function processReview(jobData: ReviewJobData) {
     }});
     console.log(`[ReviewService] 💾 Saved review result to MongoDB.`);
 
-    // --------------------------------------------------------------------------
-    // STEP 10: Emit WebSocket event (stub)
-    // --------------------------------------------------------------------------
-    // We decouple real-time notifications. The service just emits it to an internal event bus 
-    // or log, and the WebSocket gateway elsewhere routes it to the browser UI.
-    console.log(`[ReviewService] 🌐 EVENT EMIT -> review:complete (${reviewDb._id.toString()})`);
+    // ── Event 3: review:complete ───────────────────────────────────────────────
+    // Send the full result to the user's browser. The React hook receives this
+    // and populates the PR review panel with inline comments and the score.
+    wsManager.send(userId, {
+      type: 'review:complete',
+      prNumber,
+      repo: repoFullName,
+      reviewId: reviewDb._id.toString(),
+      summary: finalSummary,
+      score: finalScore,
+      comments: allComments,
+      tokensUsed: totalTokensUsed,
+    });
+    console.log(`[ReviewService] 🌐 review:complete emitted to userId=${userId}`);
 
   } catch (error: any) {
     console.error(`[ReviewService] Critical failure processing review: ${error.message}`);
