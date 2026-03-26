@@ -5,6 +5,8 @@ import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './lib/swagger';
 import { authRouter } from './modules/auth/auth.routes';
 import { webhookRouter } from './modules/webhook/webhook.routes';
+import { billingRouter } from './modules/billing/billing.routes';
+import { reviewRouter } from './modules/review/review.routes';
 
 const app = express();
 
@@ -70,9 +72,10 @@ app.use('/webhooks', webhookRouter);
  * Placing express.json() here means it only applies to routes mounted below
  * this point (/api/auth, /api/docs, /health) which all need parsed JSON.
  */
-import { reviewRouter } from './modules/review/review.routes';
+// The billing webhook ALSO needs raw body (same reason as GitHub webhooks above).
+// Mount it under /billing BEFORE express.json().
+app.use('/billing', billingRouter);
 
-// ...
 app.use(express.json());
 
 app.use('/api/auth', authRouter);

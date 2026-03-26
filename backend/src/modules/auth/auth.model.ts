@@ -24,6 +24,8 @@ export interface IUser extends Document {
   refreshTokens: IRefreshTokenEntry[];
   plan: 'free' | 'pro' | 'enterprise';
   stripeCustomerId?: string;
+  stripeSubscriptionId?: string;  // active Stripe Subscription ID (null on free)
+  planExpiresAt?: Date;           // when the current billing period ends
   connectedRepos: mongoose.Types.ObjectId[];
   prReviewsThisMonth: number;
   planResetDate: Date;
@@ -64,8 +66,14 @@ const UserSchema = new Schema<IUser>(
       enum: ['free', 'pro', 'enterprise'] as const,
       default: 'free',
     },
-    // Useful for Module 6 (Billing)
+    // Stripe billing fields
     stripeCustomerId: { type: String, default: null },
+    // The ID of the active Stripe Subscription object. Null for free users.
+    stripeSubscriptionId: { type: String, default: null },
+    // Exact timestamp when the current paid billing period ends.
+    // We use this so users keep Pro access for the rest of the period they paid for,
+    // even if they cancel mid-month — a practice called "access until period end".
+    planExpiresAt: { type: Date, default: null },
     // Tracks repositories the user has installed the GitHub App on
     connectedRepos: [{ type: Schema.Types.ObjectId, ref: 'Repository' }],
     prReviewsThisMonth: { type: Number, default: 0 },
