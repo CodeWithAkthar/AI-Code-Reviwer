@@ -1,39 +1,26 @@
 import express, { Router } from 'express';
 import { handleGitHubWebhook } from './webhook.controller';
+import { enforcePlanLimit } from '../../middleware/rateLimit';
 
 /**
  * WHY express.raw() HERE, NOT express.json()?
- *
- * GitHub's HMAC signature is computed over the RAW request body bytes —
- * the exact byte sequence GitHub sent, before any parsing.
- *
- * express.json() does two things:
- *   1. Reads the raw bytes into memory ✅
- *   2. JSON.parses them and replaces req.body with the parsed object ❌
- *
- * After express.json() runs, the original bytes are GONE. When we then try
- * to compute HMAC, there is nothing to hash — the signature will never match.
- *
- * express.raw({ type: 'application/json' }) does only step 1:
- *   - req.body becomes a Buffer containing the raw bytes
- *   - We compute HMAC on that Buffer (in the controller)
- *   - We then JSON.parse the Buffer ourselves after validation passes
- *
- * This is why the webhook route CANNOT use the global express.json()
- * middleware — it must have its own raw body parser.
- *
- * See app.ts for the middleware ordering that makes this possible.
+ * -------------------------------------------------------------------
+ * GitHub webhooks are secured using an HMAC-SHA256 signature calculated over the 
+ * EXACT raw byte payload sent over the wire.
+ * 
+ * If we use `express.json()` globally before this route, it consumes the raw byte
+ * stream, parses it into an object, and throws away the bytes. When we try to 
+ * stringify it back later to calculate the signature, JS object key ordering and 
+ * spacing variations will produce a completely different payload string, causing 
+ * signature validation to fail permanently.
+ * 
+ * `express.raw({ type: 'application/json' })` safely captures the raw Buffer 
+ * and stores it on `req.body` so `webhook.controller` can compute the HMAC cleanly.
  */
-const router = Router();
 
-/**
- * Raw body parser middleware for the webhook route.
- * Placed here (not in app.ts) so it applies exclusively to POST /webhooks/github.
- * The 1mb limit prevents oversized payloads from exhausting memory.
- */
-const rawBodyParser = express.raw({ type: 'application/json', limit: '1mb' });
+export const webhookRouter: Router = express.Router();
 
-// POST /webhooks/github — receive GitHub webhook events
-router.post('/github', rawBodyParser, handleGitHubWebhook);
-
-export { router as webhookRouter };
+// The rate limit must run BEFORE handleGitHubWebhook to prevent
+// BullMQ enqueueing and Claude tokens being spent on blocked users.
+// Added enforcePlanLimit middleware:
+webhookRouter.post('/github', express.raw({ type: 'application/json' }), enforcePlanLimit, handleGitHubWebhook);

@@ -22,7 +22,9 @@ export interface IUser extends Document {
   avatarUrl: string;
   githubAccessToken: string;
   refreshTokens: IRefreshTokenEntry[];
-  plan: 'free' | 'pro';
+  plan: 'free' | 'pro' | 'enterprise';
+  stripeCustomerId?: string;
+  connectedRepos: mongoose.Types.ObjectId[];
   prReviewsThisMonth: number;
   planResetDate: Date;
   createdAt: Date;
@@ -59,9 +61,13 @@ const UserSchema = new Schema<IUser>(
     refreshTokens: { type: [RefreshTokenEntrySchema], default: [] },
     plan: {
       type: String,
-      enum: ['free', 'pro'] as const,
+      enum: ['free', 'pro', 'enterprise'] as const,
       default: 'free',
     },
+    // Useful for Module 6 (Billing)
+    stripeCustomerId: { type: String, default: null },
+    // Tracks repositories the user has installed the GitHub App on
+    connectedRepos: [{ type: Schema.Types.ObjectId, ref: 'Repository' }],
     prReviewsThisMonth: { type: Number, default: 0 },
     planResetDate: {
       type: Date,

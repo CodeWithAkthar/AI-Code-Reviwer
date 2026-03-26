@@ -3,7 +3,7 @@ import { getInstallationClient } from '../../lib/githubClient';
 import { parseDiff, ParsedFile } from './review.parsers';
 import { buildPrompt, getModelForFile } from './review.prompts';
 import Groq from 'groq-sdk';
-import { Review, IReviewComment } from './review.model';
+import { Review, IComment } from './review.model';
 import * as wsManager from '../../lib/wsManager';
 
 const groq = new Groq({
@@ -17,25 +17,29 @@ const MAX_LINES_PER_CHUNK = 800;
 interface GroqReviewResponse {
   summary: string;
   score: number;
-  comments: IReviewComment[];
+  comments: IComment[];
 }
 
-/**
- * Orchestrates the end-to-end AI review process for a PR.
- */
+import { Repository } from './repository.model';
+
+// ... (code omitted up to processReview)
 export async function processReview(jobData: ReviewJobData) {
   const { userId, repoFullName, prNumber, installationId } = jobData;
   const [owner, repo] = repoFullName.split('/');
   
   console.log(`[ReviewService] Starting review for ${owner}/${repo}#${prNumber}`);
 
-  // Create a pending review record in DB
+  const repoDoc = await Repository.findOne({ fullName: repoFullName });
+  if (!repoDoc) {
+    throw new Error(`Repository ${repoFullName} not found in database.`);
+  }
+
+  // Create a pending review record in DB using proper referenced ObjectIds
   const reviewDb = await Review.create({
     prNumber,
-    owner,
-    repo,
+    repo: repoDoc._id,
+    user: userId, // userId from the payload is a string or ObjectId that mongoose casts correctly
     status: 'pending',
-    model: 'mixed', // Detailed later
   });
 
   try {
@@ -104,7 +108,7 @@ export async function processReview(jobData: ReviewJobData) {
     if (currentChunk.length > 0) chunks.push(currentChunk);
 
     let totalTokensUsed = 0;
-    const allComments: IReviewComment[] = [];
+    const allComments: IComment[] = [];
     const chunkSummaries: string[] = [];
     let combinedScore = 0;
 
@@ -230,7 +234,7 @@ export async function processReview(jobData: ReviewJobData) {
       score: finalScore,
       comments: allComments,
       tokensUsed: totalTokensUsed,
-      model: chunks.length > 1 ? 'multiple' : getModelForFile((chunks[0] && chunks[0][0]) ? chunks[0][0].filename : ''),
+      modelUsed: chunks.length > 1 ? 'multiple' : getModelForFile((chunks[0] && chunks[0][0]) ? chunks[0][0].filename : ''),
     }});
     console.log(`[ReviewService] 💾 Saved review result to MongoDB.`);
 

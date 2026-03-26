@@ -70,9 +70,13 @@ app.use('/webhooks', webhookRouter);
  * Placing express.json() here means it only applies to routes mounted below
  * this point (/api/auth, /api/docs, /health) which all need parsed JSON.
  */
+import { reviewRouter } from './modules/review/review.routes';
+
+// ...
 app.use(express.json());
 
 app.use('/api/auth', authRouter);
+app.use('/api/reviews', reviewRouter);
 
 /** Swagger UI — interactive API documentation */
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
