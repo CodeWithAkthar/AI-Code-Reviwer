@@ -1,0 +1,75 @@
+.billing-page { display: flex; flex-direction: column; gap: var(--space-lg); }
+.billing-page h1 { font-size: 24px; font-weight: 700; }
+
+.plan-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-lg);
+}
+
+@media (max-width: 640px) { .plan-cards { grid-template-columns: 1fr; } }
+
+.plan-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.plan-card--current { border-color: var(--color-accent); }
+.plan-card--pro     { border-color: rgba(56,139,253,0.5); }
+
+.plan-card-header { display: flex; justify-content: space-between; align-items: baseline; }
+.plan-card-header h2 { font-size: 20px; font-weight: 700; }
+
+.plan-price { font-size: 28px; font-weight: 800; color: var(--color-text-primary); }
+.plan-price span { font-size: 14px; font-weight: 400; color: var(--color-text-secondary); }
+
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.plan-features li { font-size: 14px; color: var(--color-text-secondary); }
+
+.plan-card-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(35,134,54,0.2);
+  color: #3fb950;
+  display: inline-block;
+}
+.plan-card-badge--pro { background: rgba(56,139,253,0.2); color: #58a6ff; }
+
+.plan-actions { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
+
+.btn-upgrade {
+  width: 100%;
+  padding: 12px;
+  background: var(--color-info);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-upgrade:hover:not(:disabled) { opacity: 0.85; }
+.btn-upgrade:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-portal {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-portal:hover:not(:disabled) { border-color: var(--color-info); color: var(--color-info); }
+.btn-portal:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.billing-note { font-size: 13px; }
