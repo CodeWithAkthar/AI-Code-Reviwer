@@ -26,6 +26,9 @@ import app from './app';
 import { connectDB } from './lib/mongodb';
 import * as wsManager from './lib/wsManager';
 
+// Initialize BullMQ worker to process review jobs
+import './queues/workers/reviewWorker';
+
 const PORT = parseInt(process.env.PORT ?? '5000', 10);
 
 // ─── Step 3: Create a plain Node.js HTTP server that wraps Express ────────────

@@ -51,6 +51,17 @@ export const reviewWorker = new Worker<ReviewJobData>(
         error: error.message,
       });
 
+      const fs = require('fs');
+      const errLog = `
+      ==========================================
+      [Worker] Failed job ${job.id} for PR #${prNumber}
+      installationId was: ${job.data.installationId}
+      userId was: ${job.data.userId}
+      repo: ${repoFullName}
+      Error message: ${error.message}
+      ==========================================\n`;
+      fs.appendFileSync('error.log', errLog);
+      
       console.error(`[Worker] Failed job ${job.id}:`, error.message);
       // Re-throw so BullMQ registers the failure and triggers retries / backoff
       throw error;

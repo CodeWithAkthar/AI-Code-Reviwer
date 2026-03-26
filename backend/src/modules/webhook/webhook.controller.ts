@@ -175,6 +175,8 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
   const payloadStr = rawBody.toString('utf8');
   const payloadRaw = JSON.parse(payloadStr);
 
+  console.log(`\n\n[Webhooks] Received exact event: ${githubEvent}, action: ${payloadRaw.action}`);
+
   // ── Handle App Installations (Connecting Repos) ───────────────────────────
   if (githubEvent === 'installation' || githubEvent === 'installation_repositories') {
     const payload = payloadRaw as GitHubInstallationPayload;

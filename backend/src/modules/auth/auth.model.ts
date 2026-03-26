@@ -64,7 +64,7 @@ const UserSchema = new Schema<IUser>(
     plan: {
       type: String,
       enum: ['free', 'pro', 'enterprise'] as const,
-      default: 'free',
+      default: 'pro',
     },
     // Stripe billing fields
     stripeCustomerId: { type: String, default: null },
