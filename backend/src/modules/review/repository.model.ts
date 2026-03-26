@@ -3,8 +3,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IRepository extends Document {
   githubRepoId: string;
   fullName: string;
-  owner: mongoose.Types.ObjectId;
-  installationId: number;
+  owner?: mongoose.Types.ObjectId;      // our MongoDB user (may be null if not matched)
+  installedBy?: string;                  // GitHub numeric user ID (from installation event)
+  installationId?: number;              // GitHub App installation ID
   isActive: boolean;
   reviewCount: number;
   createdAt: Date;
@@ -16,24 +17,27 @@ const RepositorySchema = new Schema<IRepository>(
     githubRepoId: {
       type: String,
       required: true,
-      unique: true, // We only want one document per physical GitHub repository
-      index: true,
+      unique: true, // single index — do NOT also call RepositorySchema.index() on this
     },
     fullName: {
       type: String,
       required: true,
-      index: true, // Useful for lookups by "owner/repo" string
+      index: true,
     },
     owner: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
-      index: true, // Useful to find all repos owned by a specific user
+      required: false, // Optional — linked when we can match to a DB user
+      index: true,
+    },
+    installedBy: {
+      type: String,   // GitHub numeric user ID as string
+      index: true,
     },
     installationId: {
       type: Number,
-      required: true,
-      index: true, // Useful for correlating webhook events back to this repo
+      required: false, // Optional — provided in full installation events
+      index: true,
     },
     isActive: {
       type: Boolean,
@@ -46,11 +50,11 @@ const RepositorySchema = new Schema<IRepository>(
   },
   { 
     timestamps: true,
-    strict: true // Ensure only fields defined in the schema are saved
+    strict: true
   }
 );
 
-// We explicitly index githubRepoId as unique to prevent duplicate registrations
-RepositorySchema.index({ githubRepoId: 1 }, { unique: true });
+// githubRepoId uniqueness is already enforced in the field definition above.
+// No extra RepositorySchema.index() call needed — that was creating the duplicate.
 
 export const Repository = mongoose.model<IRepository>('Repository', RepositorySchema);

@@ -256,10 +256,11 @@ export async function processReview(jobData: ReviewJobData) {
   } catch (error: any) {
     console.error(`[ReviewService] Critical failure processing review: ${error.message}`);
     
-    // Fallback: update DB with failure
-    await reviewDb.updateOne({
-      status: 'failed',
-      error: error.message,
+    await Review.updateOne({ _id: reviewDb._id }, {
+      $set: {
+        status: 'failed',
+        error: error.message,
+      }
     });
     
     // Re-throw so the worker registers it as a failure for retries
