@@ -7,25 +7,25 @@ import { reviewQueue } from '../../queues/reviewQueue';
 // Types
 // ---------------------------------------------------------------------------
 
-/** Shape of a GitHub pull_request webhook payload (partial — only what we use) */
+/** Shape of a GitHub pull_request payload (partial) */
 interface GitHubPullRequestPayload {
   action: string;
   number: number;
-  pull_request: {
-    number: number;
+  pull_request: { number: number };
+  repository: { id: number; full_name: string; owner: { id: number } };
+  installation?: { id: number };
+  sender: { login: string };
+}
+
+/** Shape of a GitHub installation payload (partial) */
+interface GitHubInstallationPayload {
+  action: string;
+  installation: {
+    account: { id: number };
   };
-  repository: {
-    full_name: string;
-    owner: {
-      id: number;
-    };
-  };
-  installation?: {
-    id: number;
-  };
-  sender: {
-    login: string;
-  };
+  repositories?: { id: number; full_name: string }[];
+  repositories_added?: { id: number; full_name: string }[];
+  repositories_removed?: { id: number; full_name: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -171,13 +171,54 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
   // "received and understood, nothing to do".
   const githubEvent = req.headers['x-github-event'];
 
+  // Parse the raw body (Buffer) into a typed JS object
+  const payloadStr = rawBody.toString('utf8');
+  const payloadRaw = JSON.parse(payloadStr);
+
+  // ── Handle App Installations (Connecting Repos) ───────────────────────────
+  if (githubEvent === 'installation' || githubEvent === 'installation_repositories') {
+    const payload = payloadRaw as GitHubInstallationPayload;
+    
+    // We only care when repos are added or the app is installed
+    if (payload.action === 'created' || payload.action === 'added') {
+      try {
+        const { Repository } = await import('../review/repository.model');
+        const reposToProcess = payload.repositories || payload.repositories_added || [];
+        const ownerGithubId = payload.installation.account.id.toString();
+
+        for (const repo of reposToProcess) {
+          await Repository.findOneAndUpdate(
+            { githubRepoId: repo.id.toString() },
+            {
+              githubRepoId: repo.id.toString(),
+              fullName: repo.full_name,
+              installedBy: ownerGithubId,
+              isActive: true, // Auto-enable when installed
+            },
+            { upsert: true } // Create if doesn't exist, update if it does
+          );
+        }
+        res.status(200).json({ status: 'repos_synced', count: reposToProcess.length });
+        return;
+      } catch (err) {
+        console.error('[Webhook] Failed to sync repos:', err);
+        res.status(500).json({ error: 'Failed to sync repos' });
+        return;
+      }
+    } else if (payload.action === 'deleted' || payload.action === 'removed') {
+      // Optional: Delete or mark inactive when uninstalled
+      res.status(200).json({ status: 'repos_removed_ignored' });
+      return;
+    }
+  }
+
+  // ── Handle Pull Requests ──────────────────────────────────────────────────
   if (githubEvent !== 'pull_request') {
     res.status(200).json({ status: 'ignored', event: githubEvent });
     return;
   }
 
-  // Parse the raw body (Buffer) into a typed payload
-  const payload = JSON.parse(rawBody.toString('utf8')) as GitHubPullRequestPayload;
+  const payload = payloadRaw as GitHubPullRequestPayload;
 
   if (!RELEVANT_ACTIONS.has(payload.action)) {
     res.status(200).json({ status: 'ignored', event: githubEvent, action: payload.action });

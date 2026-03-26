@@ -4,6 +4,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './lib/swagger';
 import { authRouter } from './modules/auth/auth.routes';
+import { userRouter } from './modules/auth/user.routes';
 import { webhookRouter } from './modules/webhook/webhook.routes';
 import { billingRouter } from './modules/billing/billing.routes';
 import { reviewRouter } from './modules/review/review.routes';
@@ -80,6 +81,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/reviews', reviewRouter);
+app.use('/api', userRouter);
 
 /** Swagger UI — interactive API documentation */
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
