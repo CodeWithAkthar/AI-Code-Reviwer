@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { apiClient, setAccessToken, getAccessToken } from '../api/apiClient';
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // We have a valid access token — fetch the user's full profile
         try {
           const data = await apiClient.get<{ user: AuthUser }>('/api/auth/me');
+          
           setUser(data.user);
         } catch {
           setUser(null);

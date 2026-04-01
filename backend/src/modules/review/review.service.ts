@@ -21,12 +21,13 @@ interface GroqReviewResponse {
 }
 
 import { Repository } from './repository.model';
+import { log } from 'node:console';
 
 // ... (code omitted up to processReview)
 export async function processReview(jobData: ReviewJobData) {
   const { userId, repoFullName, prNumber, installationId } = jobData;
   const [owner, repo] = repoFullName.split('/');
-  
+
   console.log(`[ReviewService] Starting review for ${owner}/${repo}#${prNumber}`);
 
   const repoDoc = await Repository.findOne({ fullName: repoFullName });
@@ -42,12 +43,14 @@ export async function processReview(jobData: ReviewJobData) {
     status: 'pending',
   });
 
+  console.log("on pending state");
+
   try {
     // --------------------------------------------------------------------------
     // STEP 2: Fetch the PR diff from GitHub
     // --------------------------------------------------------------------------
     const github = await getInstallationClient(installationId);
-    
+
     // We request 'application/vnd.github.v3.diff' to get the raw textual unified diff
     // because it efficiently tells us exactly what changed line by line, mapping to 
     // the exact line numbers we need to post comments.
@@ -59,6 +62,7 @@ export async function processReview(jobData: ReviewJobData) {
         format: 'diff',
       },
     });
+    console.log("on diff state", diffResponse);
     const rawDiff = diffResponse.data as unknown as string;
 
     // We need the latest commit SHA to post PR review comments correctly.
@@ -70,6 +74,8 @@ export async function processReview(jobData: ReviewJobData) {
     });
     const commitId = prDetails.data.head.sha;
 
+    console.log("on commit state", commitId);
+
     // --------------------------------------------------------------------------
     // STEP 3: Parse the raw diff
     // --------------------------------------------------------------------------
@@ -79,6 +85,8 @@ export async function processReview(jobData: ReviewJobData) {
       await reviewDb.updateOne({ status: 'completed', summary: 'No actionable changes found.' });
       return;
     }
+
+    console.log("on parsed state", parsedFiles);
 
     // --------------------------------------------------------------------------
     // STEP 6: Chunking Strategy for Large Diffs
@@ -112,6 +120,8 @@ export async function processReview(jobData: ReviewJobData) {
     const chunkSummaries: string[] = [];
     let combinedScore = 0;
 
+    console.log("on chunks state", chunks);
+
     // --------------------------------------------------------------------------
     // Process Each Chunk
     // --------------------------------------------------------------------------
@@ -134,10 +144,11 @@ export async function processReview(jobData: ReviewJobData) {
       // STEP 4: Model routing logic
       // We pick the model based on the first file in the chunk for simplicity.
       // (Advanced: evaluate all files and pick the most capable required).
-     const modelToUse = chunk.some(f => /auth|payment|security/i.test(f.filename))
-  ? 'llama-3.3-70b-versatile'
-  : getModelForFile(chunk[0].filename);
+      const modelToUse = chunk.some(f => /auth|payment|security/i.test(f.filename))
+        ? 'llama-3.3-70b-versatile'
+        : getModelForFile(chunk[0].filename);
 
+      console.log("on model state", modelToUse);
       // STEP 5: Build prompt
       const prompt = buildPrompt(chunk);
 
@@ -152,8 +163,12 @@ export async function processReview(jobData: ReviewJobData) {
         response_format: { type: 'json_object' }
       });
 
+      console.log("on message state", message);
+
       // Groq returns a standard OpenAI-like response object
       let responseText = message.choices[0]?.message?.content || '';
+
+      console.log("on responseText state", responseText);
 
       totalTokensUsed += (message.usage?.prompt_tokens || 0) + (message.usage?.completion_tokens || 0);
 
@@ -168,7 +183,7 @@ export async function processReview(jobData: ReviewJobData) {
         }
 
         const parsedResult = JSON.parse(cleanJsonStr) as GroqReviewResponse;
-        
+
         allComments.push(...(parsedResult.comments || []));
         chunkSummaries.push(parsedResult.summary || '');
         combinedScore += parsedResult.score || 0;
@@ -181,6 +196,9 @@ export async function processReview(jobData: ReviewJobData) {
 
     const finalScore = chunks.length > 0 ? Math.round(combinedScore / chunks.length) : 0;
     const finalSummary = chunkSummaries.join(' ');
+
+    console.log("on finalScore state", finalScore);
+    console.log("on finalSummary state", finalSummary);
 
     // --------------------------------------------------------------------------
     // STEP 8: Post PR review comments to GitHub
@@ -228,16 +246,25 @@ export async function processReview(jobData: ReviewJobData) {
     // --------------------------------------------------------------------------
     // STEP 9: Save to MongoDB
     // --------------------------------------------------------------------------
-    await reviewDb.updateOne({ _id: reviewDb._id },{$set:{
+    const updatedReview = await Review.updateOne(
+  { _id: reviewDb._id },
+  {
+    $set: {
       status: 'completed',
+      prTitle: prDetails.data.title,      // ← add this
+      prUrl: prDetails.data.html_url,     // ← add this
       summary: finalSummary,
       score: finalScore,
       comments: allComments,
       tokensUsed: totalTokensUsed,
-      modelUsed: chunks.length > 1 ? 'multiple' : getModelForFile((chunks[0] && chunks[0][0]) ? chunks[0][0].filename : ''),
-    }});
-    console.log(`[ReviewService] 💾 Saved review result to MongoDB.`);
+      modelUsed: chunks.length > 1
+        ? 'multiple'
+        : getModelForFile(chunks[0]?.[0]?.filename ?? ''),
+    }
+  }
+);
 
+    console.log(`[ReviewService] 💾 Saved review result to MongoDB.`);
     // ── Event 3: review:complete ───────────────────────────────────────────────
     // Send the full result to the user's browser. The React hook receives this
     // and populates the PR review panel with inline comments and the score.
@@ -255,14 +282,14 @@ export async function processReview(jobData: ReviewJobData) {
 
   } catch (error: any) {
     console.error(`[ReviewService] Critical failure processing review: ${error.message}`);
-    
+
     await Review.updateOne({ _id: reviewDb._id }, {
       $set: {
         status: 'failed',
         error: error.message,
       }
     });
-    
+
     // Re-throw so the worker registers it as a failure for retries
     throw error;
   }

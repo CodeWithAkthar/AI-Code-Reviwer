@@ -31,7 +31,9 @@ const PLAN_LIMITS: Record<string, number> = {
 
 export function DashboardPage() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
+  console.log("testing");
+  
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [usage, setUsage] = useState<UsageData>({ used: 0, limit: 5 });
@@ -66,7 +68,7 @@ export function DashboardPage() {
 
   const isPro = user?.plan === 'pro' || user?.plan === 'enterprise';
   const usedPercent = isPro ? 0 : Math.min((usage.used / usage.limit) * 100, 100);
-  const atLimit = !isPro && usage.used >= usage.limit;
+  const atLimit = !isPro && usage.used >= usage.limit; 
 
   return (
     <div className="dashboard-layout">
@@ -79,7 +81,7 @@ export function DashboardPage() {
           <Link to="/billing" className="sidebar-link">💳 Billing</Link>
         </nav>
         <div className="sidebar-user">
-          {user?.avatarUrl && (
+          {user?.avatarUrl && ( 
             <img src={user.avatarUrl} alt={user.username} className="avatar" />
           )}
           <div>
@@ -91,7 +93,7 @@ export function DashboardPage() {
           <button className="btn-logout" onClick={handleLogout}>Sign out</button>
         </div>
       </aside>
-
+      
       {/* Main content */}
       <main className="dashboard-main">
         <div className="dashboard-header">

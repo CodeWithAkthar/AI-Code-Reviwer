@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { User } from './auth.model';
 import {
   exchangeCodeForGitHubToken,
   fetchGitHubUserProfile,
@@ -141,11 +142,35 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 /**
- * Returns the authenticated user's identity from the JWT payload.
+ * Returns the authenticated user's full profile from the database.
  *
- * The payload is already validated and attached to `req.user` by the
- * `authenticate` middleware — no additional DB call needed here.
+ * The JWT payload only contains `userId` and `githubId` (kept small for
+ * security). This endpoint fetches the full document so the client gets
+ * `username`, `avatarUrl`, `email`, and `plan` as well.
  */
-export function getMe(req: Request, res: Response): void {
-  res.json({ user: req.user });
+export async function getMe(req: Request, res: Response): Promise<void> {
+  try {
+    const user = await User.findById(req.user?.userId).select(
+      'githubId username email avatarUrl plan',
+    );
+
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      user: {
+        userId: String(user._id),
+        githubId: user.githubId,
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        plan: user.plan,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch user';
+    res.status(500).json({ error: message });
+  }
 }
