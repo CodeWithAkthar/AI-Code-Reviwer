@@ -80,7 +80,7 @@ export function PRDetailPage() {
     const isActive = review?.status === 'pending' || review?.status === 'processing';
     if (!isActive || !user) return;
 
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000/ws';
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 

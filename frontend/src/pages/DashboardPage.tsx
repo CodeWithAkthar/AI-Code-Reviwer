@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { apiClient } from '../api/apiClient';
+import { apiClient, getAccessToken } from '../api/apiClient';
 import '../styles/dashboard.css';
 
 interface Review {
@@ -32,8 +32,6 @@ const PLAN_LIMITS: Record<string, number> = {
 export function DashboardPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate(); 
-  console.log("testing");
-  
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [usage, setUsage] = useState<UsageData>({ used: 0, limit: 5 });
@@ -57,6 +55,54 @@ export function DashboardPage() {
       }
     }
     loadDashboard();
+  }, [user]);
+
+  // Keep dashboard list live via WebSocket events from worker/service.
+  useEffect(() => {
+    if (!user) return;
+
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000/ws';
+    const ws = new WebSocket(wsUrl);
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        try {
+          const data = await apiClient.get<{ reviews: Review[] }>('/api/reviews');
+          setReviews(data.reviews);
+        } catch {
+          // Ignore live refresh errors; initial load already handles error UI.
+        }
+      }, 400);
+    };
+
+    ws.onopen = () => {
+      const token = getAccessToken();
+      if (!token) return;
+      ws.send(JSON.stringify({ type: 'auth', token }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (
+          msg.type === 'job:started' ||
+          msg.type === 'review:progress' ||
+          msg.type === 'review:complete' ||
+          msg.type === 'job:failed'
+        ) {
+          scheduleRefresh();
+        }
+      } catch {
+        // Ignore malformed events.
+      }
+    };
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      ws.close();
+    };
   }, [user]);
 
   const handleLogout = async () => {

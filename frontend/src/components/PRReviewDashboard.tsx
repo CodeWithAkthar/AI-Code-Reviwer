@@ -1,4 +1,3 @@
-import React from 'react';
 import { useReviewSocket } from '../hooks/useReviewSocket';
 
 interface Props {

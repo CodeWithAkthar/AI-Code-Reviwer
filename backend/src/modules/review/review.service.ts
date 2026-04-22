@@ -25,7 +25,8 @@ import { log } from 'node:console';
 
 // ... (code omitted up to processReview)
 export async function processReview(jobData: ReviewJobData) {
-  const { userId, repoFullName, prNumber, installationId } = jobData;
+  let { userId } = jobData;
+  const { repoFullName, prNumber, installationId } = jobData;
   const [owner, repo] = repoFullName.split('/');
 
   console.log(`[ReviewService] Starting review for ${owner}/${repo}#${prNumber}`);
@@ -35,13 +36,33 @@ export async function processReview(jobData: ReviewJobData) {
     throw new Error(`Repository ${repoFullName} not found in database.`);
   }
 
-  // Create a pending review record in DB using proper referenced ObjectIds
-  const reviewDb = await Review.create({
-    prNumber,
-    repo: repoDoc._id,
-    user: userId, // userId from the payload is a string or ObjectId that mongoose casts correctly
-    status: 'pending',
-  });
+  if (!userId && repoDoc.owner) {
+    userId = repoDoc.owner.toString();
+  }
+  if (!userId && repoDoc.installedBy) {
+    const { User } = await import('../auth/auth.model');
+    const userDoc = await User.findOne({ githubId: repoDoc.installedBy });
+    if (userDoc) userId = userDoc._id.toString();
+  }
+  if (!userId) {
+    throw new Error(`No mapped user found for repository ${repoFullName}.`);
+  }
+
+  // Upsert avoids duplicate-key failures on synchronize/re-run events.
+  const reviewDb = await Review.findOneAndUpdate(
+    { repo: repoDoc._id, prNumber },
+    {
+      $set: {
+        user: userId,
+        status: 'pending',
+      },
+      $setOnInsert: {
+        repo: repoDoc._id,
+        prNumber,
+      },
+    },
+    { new: true, upsert: true },
+  );
 
   console.log("on pending state");
 
@@ -246,7 +267,7 @@ export async function processReview(jobData: ReviewJobData) {
     // --------------------------------------------------------------------------
     // STEP 9: Save to MongoDB
     // --------------------------------------------------------------------------
-    const updatedReview = await Review.updateOne(
+    await Review.updateOne(
   { _id: reviewDb._id },
   {
     $set: {

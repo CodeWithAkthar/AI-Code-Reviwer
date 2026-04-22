@@ -21,6 +21,7 @@ interface GitHubPullRequestPayload {
 interface GitHubInstallationPayload {
   action: string;
   installation: {
+    id: number;
     account: { id: number };
   };
   repositories?: { id: number; full_name: string }[];
@@ -195,6 +196,7 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
               githubRepoId: repo.id.toString(),
               fullName: repo.full_name,
               installedBy: ownerGithubId,
+              installationId: payload.installation.id,
               isActive: true, // Auto-enable when installed
             },
             { upsert: true } // Create if doesn't exist, update if it does
@@ -236,10 +238,31 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
   // GitHub ID of the repo owner, so we look them up in our DB.
   let userId = '';
   try {
+    const { Repository } = await import('../review/repository.model');
     const { User } = await import('../auth/auth.model');
     const ownerGithubId = payload.repository.owner.id.toString();
-    const userDoc = await User.findOne({ githubId: ownerGithubId });
-    if (userDoc) userId = userDoc._id.toString();
+
+    // Prefer repository mapping first. For org repos, repository.owner.id is often
+    // the org GitHub ID, not the individual installer/user in our app.
+    const repoDoc = await Repository.findOne({
+      $or: [
+        { githubRepoId: payload.repository.id.toString() },
+        { fullName: payload.repository.full_name },
+      ],
+    });
+
+    if (repoDoc?.owner) {
+      userId = repoDoc.owner.toString();
+    } else if (repoDoc?.installedBy) {
+      const installer = await User.findOne({ githubId: repoDoc.installedBy });
+      if (installer) userId = installer._id.toString();
+    }
+
+    // Fallback for personal repos that don't have Repository mapping yet.
+    if (!userId) {
+      const userDoc = await User.findOne({ githubId: ownerGithubId });
+      if (userDoc) userId = userDoc._id.toString();
+    }
   } catch (err) {
     console.error('[Webhook] Failed to look up user for WS routing:', err);
   }
