@@ -74,7 +74,7 @@ export function AppShell({
                 {(user?.username || 'U').charAt(0).toUpperCase()}
               </div>
             )}
-            <div>
+            <div className="app-user-meta">
               <p className="app-user-name">{user?.username || 'GitHub User'}</p>
               <p className="text-secondary">{user?.plan?.toUpperCase() || 'FREE'}</p>
             </div>

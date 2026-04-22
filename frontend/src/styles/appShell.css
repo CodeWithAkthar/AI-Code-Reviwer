@@ -84,10 +84,18 @@
   display: flex;
   align-items: center;
   gap: 0.7rem;
+  min-width: 0;
+}
+
+.app-user-meta {
+  min-width: 0;
+  flex: 1;
 }
 
 .app-user-name {
   font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .app-avatar {

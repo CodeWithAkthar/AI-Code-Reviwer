@@ -7,7 +7,7 @@ const STORAGE_KEY = 'ai-reviewer-theme';
 function getInitialTheme(): Theme {
   const stored = window.localStorage.getItem(STORAGE_KEY);
   if (stored === 'light' || stored === 'dark') return stored;
-  return 'light';
+  return 'dark';
 }
 
 export function useTheme() {
