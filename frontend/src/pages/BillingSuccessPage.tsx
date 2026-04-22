@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../hooks/useTheme';
-import { ThemeToggle } from '../components/ThemeToggle';
 import '../styles/billing.css';
 
 /**
@@ -15,7 +13,6 @@ import '../styles/billing.css';
  */
 export function BillingSuccessPage() {
   const { refreshUser } = useAuth();
-  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     // Give the webhook a moment to fire, then refresh the user's plan
@@ -25,9 +22,6 @@ export function BillingSuccessPage() {
 
   return (
     <div className="billing-success-screen">
-      <div className="billing-success-top">
-        <ThemeToggle theme={theme} onToggle={toggleTheme} />
-      </div>
       <div className="billing-success-card card">
         <div className="billing-success-check">✓</div>
         <h1>You're on Pro!</h1>

@@ -147,7 +147,13 @@ export function DashboardPage() {
   };
 
   return (
-    <AppShell user={user} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme}>
+    <AppShell
+      user={user}
+      onLogout={handleLogout}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      showThemeToggle
+    >
       <section className="dashboard-home">
         <header className="dashboard-hero">
           <p className="pill">Realtime AI Insights</p>

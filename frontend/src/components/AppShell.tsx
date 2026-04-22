@@ -11,8 +11,9 @@ interface AppShellProps {
     plan?: string;
   } | null;
   onLogout?: () => void;
-  theme: 'light' | 'dark';
-  onToggleTheme: () => void;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
+  showThemeToggle?: boolean;
   children: ReactNode;
 }
 
@@ -28,6 +29,7 @@ export function AppShell({
   onLogout,
   theme,
   onToggleTheme,
+  showThemeToggle = false,
   children,
 }: AppShellProps) {
   const location = useLocation();
@@ -61,7 +63,9 @@ export function AppShell({
         </nav>
 
         <div className="app-sidebar-bottom">
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          {showThemeToggle && theme && onToggleTheme ? (
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          ) : null}
           <div className="app-user-row">
             {user?.avatarUrl ? (
               <img className="app-avatar" src={user.avatarUrl} alt={user.username || 'User'} />
@@ -88,7 +92,9 @@ export function AppShell({
           <button type="button" className="btn btn-outline" onClick={() => setIsOpen((p) => !p)}>
             Menu
           </button>
-          <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          {showThemeToggle && theme && onToggleTheme ? (
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          ) : null}
         </header>
         <main className="app-main-content">{children}</main>
       </div>

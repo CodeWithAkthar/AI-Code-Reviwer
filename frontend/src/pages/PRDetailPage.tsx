@@ -3,8 +3,6 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/apiClient';
 import { getAccessToken } from '../api/apiClient';
-import { useTheme } from '../hooks/useTheme';
-import { ThemeToggle } from '../components/ThemeToggle';
 import '../styles/prDetail.css';
 
 interface Comment {
@@ -54,7 +52,6 @@ export function PRDetailPage() {
   const [liveProgress, setLiveProgress] = useState<LiveProgress | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
-  const { theme, toggleTheme } = useTheme();
 
   // ── Load review from API ─────────────────────────────────────────────────
   useEffect(() => {
@@ -140,7 +137,6 @@ export function PRDetailPage() {
       <div className="pr-header">
         <div className="pr-header-top">
           <Link to="/dashboard" className="back-link">← Dashboard</Link>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
         <div className="pr-title-row">
           <h1>
