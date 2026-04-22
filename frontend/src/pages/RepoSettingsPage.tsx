@@ -4,10 +4,14 @@ import { apiClient } from '../api/apiClient';
 import '../styles/repos.css';
 
 interface Repo {
-  _id: string;
+  _id?: string;
+  githubRepoId: string;
   fullName: string;
   isActive: boolean;
   reviewCount: number;
+  isAppInstalled: boolean;
+  installationId?: number;
+  isPrivate?: boolean;
 }
 
 export function RepoSettingsPage() {
@@ -15,6 +19,9 @@ export function RepoSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
+  const installUrl =
+    import.meta.env.VITE_GITHUB_APP_INSTALL_URL ||
+    'https://github.com/apps/AI-code-reviewer-github-app/installations/new';
 
   useEffect(() => {
     apiClient.get<{ repos: Repo[] }>('/api/repos')
@@ -23,11 +30,15 @@ export function RepoSettingsPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const toggleRepo = async (repoId: string, currentState: boolean) => {
-    setToggling(repoId);
+  const toggleRepo = async (githubRepoId: string, currentState: boolean) => {
+    setToggling(githubRepoId);
     try {
-      await apiClient.patch(`/api/repos/${repoId}`, { isActive: !currentState });
-      setRepos(repos.map(r => r._id === repoId ? { ...r, isActive: !currentState } : r));
+      await apiClient.patch(`/api/repos/${githubRepoId}`, { isActive: !currentState });
+      setRepos((prev) =>
+        prev.map((r) =>
+          r.githubRepoId === githubRepoId ? { ...r, isActive: !currentState } : r,
+        ),
+      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -55,21 +66,33 @@ export function RepoSettingsPage() {
       ) : (
         <div className="repos-list">
           {repos.map((repo) => (
-            <div key={repo._id} className="repo-card">
+            <div key={repo.githubRepoId} className="repo-card">
               <div className="repo-info">
                 <p className="repo-name">{repo.fullName}</p>
                 <p className="text-secondary">{repo.reviewCount} review{repo.reviewCount !== 1 ? 's' : ''} total</p>
               </div>
-              <label className="toggle">
-                <input
-                  type="checkbox"
-                  checked={repo.isActive}
-                  disabled={toggling === repo._id}
-                  onChange={() => toggleRepo(repo._id, repo.isActive)}
-                />
-                <span className="toggle-slider" />
-                <span className="toggle-label">{repo.isActive ? 'Active' : 'Paused'}</span>
-              </label>
+              {!repo.isAppInstalled ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    window.location.href = installUrl;
+                  }}
+                >
+                  Enable Reviews
+                </button>
+              ) : (
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={repo.isActive}
+                    disabled={toggling === repo.githubRepoId}
+                    onChange={() => toggleRepo(repo.githubRepoId, repo.isActive)}
+                  />
+                  <span className="toggle-slider" />
+                  <span className="toggle-label">{repo.isActive ? 'Active' : 'Paused'}</span>
+                </label>
+              )}
             </div>
           ))}
         </div>

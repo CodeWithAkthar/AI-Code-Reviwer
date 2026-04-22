@@ -186,8 +186,10 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
     if (payload.action === 'created' || payload.action === 'added') {
       try {
         const { Repository } = await import('../review/repository.model');
+        const { User } = await import('../auth/auth.model');
         const reposToProcess = payload.repositories || payload.repositories_added || [];
         const ownerGithubId = payload.installation.account.id.toString();
+        const ownerUser = await User.findOne({ githubId: ownerGithubId }).select('_id');
 
         for (const repo of reposToProcess) {
           await Repository.findOneAndUpdate(
@@ -195,6 +197,7 @@ export async function handleGitHubWebhook(req: Request, res: Response): Promise<
             {
               githubRepoId: repo.id.toString(),
               fullName: repo.full_name,
+              owner: ownerUser?._id,
               installedBy: ownerGithubId,
               installationId: payload.installation.id,
               isActive: true, // Auto-enable when installed
