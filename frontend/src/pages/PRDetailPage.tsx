@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/apiClient';
 import { getAccessToken } from '../api/apiClient';
+import { useTheme } from '../hooks/useTheme';
+import { ThemeToggle } from '../components/ThemeToggle';
 import '../styles/prDetail.css';
 
 interface Comment {
@@ -36,9 +38,9 @@ interface LiveProgress {
 }
 
 const SEVERITY_LABELS: Record<string, string> = {
-  critical: '🚨 Critical',
-  warning: '⚠️ Warning',
-  info: 'ℹ️ Info',
+  critical: 'Critical',
+  warning: 'Warning',
+  info: 'Suggestion',
 };
 
 export function PRDetailPage() {
@@ -52,6 +54,7 @@ export function PRDetailPage() {
   const [liveProgress, setLiveProgress] = useState<LiveProgress | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const { theme, toggleTheme } = useTheme();
 
   // ── Load review from API ─────────────────────────────────────────────────
   useEffect(() => {
@@ -135,7 +138,10 @@ export function PRDetailPage() {
     <div className="pr-detail-page">
       {/* Header */}
       <div className="pr-header">
-        <Link to="/dashboard" className="back-link">← Dashboard</Link>
+        <div className="pr-header-top">
+          <Link to="/dashboard" className="back-link">← Dashboard</Link>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <div className="pr-title-row">
           <h1>
             <span className="pr-num">#{review.prNumber}</span>{' '}
@@ -161,18 +167,22 @@ export function PRDetailPage() {
 
       {/* Summary Card */}
       {review.status === 'completed' && (
-        <div className="summary-card">
-          <div className="score-circle">
-            <span className="score-value">{review.score}</span>
-            <span className="score-label">/10</span>
+        <div className="summary-shell">
+          <div className={`score-ring score-${review.score >= 8 ? 'high' : review.score >= 5 ? 'mid' : 'low'}`}>
+            <div className="score-circle">
+              <span className="score-value">{review.score}</span>
+              <span className="score-label">/10</span>
+            </div>
           </div>
-          <div className="summary-text">
-            <h3>AI Summary</h3>
-            <p>{review.summary || 'No summary available.'}</p>
-            <div className="summary-meta">
-              <span>Model: <strong>{review.modelUsed}</strong></span>
-              <span>Tokens: <strong>{review.tokensUsed?.toLocaleString()}</strong></span>
-              <span>Comments: <strong>{review.comments.length}</strong></span>
+          <div className="summary-card card">
+            <div className="summary-text">
+              <h3>AI Summary</h3>
+              <p>{review.summary || 'No summary available.'}</p>
+              <div className="summary-meta">
+                <span>Model: <strong>{review.modelUsed}</strong></span>
+                <span>Tokens: <strong>{review.tokensUsed?.toLocaleString()}</strong></span>
+                <span>Comments: <strong>{review.comments.length}</strong></span>
+              </div>
             </div>
           </div>
         </div>
@@ -205,7 +215,7 @@ export function PRDetailPage() {
           ))}
         </div>
       ) : review.status === 'completed' ? (
-        <div className="empty-state">✅ No issues found. Looks good!</div>
+        <div className="empty-state">No comments found. This PR looks clean.</div>
       ) : null}
     </div>
   );

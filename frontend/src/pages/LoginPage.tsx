@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
+import { ThemeToggle } from '../components/ThemeToggle';
 import '../styles/login.css';
 
 /**
@@ -17,6 +19,7 @@ import '../styles/login.css';
 export function LoginPage() {
   const { isAuthenticated, isLoading, login } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   // If already logged in, skip the login page entirely
   useEffect(() => {
@@ -29,11 +32,19 @@ export function LoginPage() {
 
   return (
     <div className="login-page">
+      <div className="login-top-actions">
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+      </div>
       <div className="login-card">
         <div className="login-logo">
-          <span className="login-logo-icon">⚡</span>
+          <span className="login-logo-icon">AI</span>
           <h1>AI Code Reviewer</h1>
-          <p>Automated AI-powered PR reviews for your GitHub repos.</p>
+          <span className="pill">Announcement</span>
+        </div>
+
+        <div className="login-copy">
+          <h2>AI reviews your PRs like a senior developer</h2>
+          <p>Ship cleaner code faster with realtime GitHub-native AI review insights.</p>
         </div>
 
         <button className="btn-github" onClick={login}>
@@ -44,7 +55,7 @@ export function LoginPage() {
         </button>
 
         <p className="login-footer">
-          By signing in, you agree to our Terms of Service.
+          Free for 5 PRs/month. No credit card required.
         </p>
       </div>
     </div>

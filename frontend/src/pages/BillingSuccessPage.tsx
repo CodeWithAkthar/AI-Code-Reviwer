@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
+import { ThemeToggle } from '../components/ThemeToggle';
+import '../styles/billing.css';
 
 /**
  * BillingSuccessPage — shown after Stripe redirects the user back.
@@ -12,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
  */
 export function BillingSuccessPage() {
   const { refreshUser } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     // Give the webhook a moment to fire, then refresh the user's plan
@@ -20,27 +24,18 @@ export function BillingSuccessPage() {
   }, [refreshUser]);
 
   return (
-    <div className="page" style={{ textAlign: 'center', paddingTop: '80px' }}>
-      <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
-      <h1>You're now on Pro!</h1>
-      <p className="text-secondary" style={{ marginTop: '8px' }}>
-        Your subscription is active. Unlimited PR reviews are now enabled.
-      </p>
-      <Link
-        to="/dashboard"
-        style={{
-          display: 'inline-block',
-          marginTop: '32px',
-          padding: '10px 24px',
-          background: 'var(--color-accent)',
-          color: 'white',
-          borderRadius: '6px',
-          textDecoration: 'none',
-          fontWeight: 600,
-        }}
-      >
-        Go to Dashboard →
-      </Link>
+    <div className="billing-success-screen">
+      <div className="billing-success-top">
+        <ThemeToggle theme={theme} onToggle={toggleTheme} />
+      </div>
+      <div className="billing-success-card card">
+        <div className="billing-success-check">✓</div>
+        <h1>You're on Pro!</h1>
+        <p className="text-secondary">All your repos now get unlimited AI reviews.</p>
+        <Link to="/dashboard" className="btn btn-primary billing-success-btn">
+          Go to Dashboard
+        </Link>
+      </div>
     </div>
   );
 }

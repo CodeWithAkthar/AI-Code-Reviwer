@@ -1,75 +1,109 @@
-.billing-page { display: flex; flex-direction: column; gap: var(--space-lg); }
-.billing-page h1 { font-size: 24px; font-weight: 700; }
+.billing-page { display: flex; flex-direction: column; gap: 1rem; }
+.billing-header h1 { font-size: clamp(1.8rem, 2.8vw, 2.5rem); }
+
+.usage-meter {
+  padding: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.usage-track {
+  width: 100%;
+  height: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.usage-fill {
+  height: 100%;
+  background: var(--accent);
+}
 
 .plan-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-lg);
+  gap: 1rem;
 }
 
 @media (max-width: 640px) { .plan-cards { grid-template-columns: 1fr; } }
 
 .plan-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-lg);
+  padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 0.8rem;
 }
 
-.plan-card--current { border-color: var(--color-accent); }
-.plan-card--pro     { border-color: rgba(56,139,253,0.5); }
+.plan-card--current { border-color: var(--accent); }
+.plan-card--pro     { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
 
 .plan-card-header { display: flex; justify-content: space-between; align-items: baseline; }
-.plan-card-header h2 { font-size: 20px; font-weight: 700; }
+.plan-card-header h2 { font-size: 1.3rem; font-weight: 700; }
 
-.plan-price { font-size: 28px; font-weight: 800; color: var(--color-text-primary); }
-.plan-price span { font-size: 14px; font-weight: 400; color: var(--color-text-secondary); }
+.plan-price { font-size: 1.6rem; font-weight: 800; color: var(--text-primary); }
+.plan-price span { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); margin-left: 0.25rem; }
 
-.plan-features { list-style: none; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.plan-features li { font-size: 14px; color: var(--color-text-secondary); }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
+.plan-features li { font-size: 0.92rem; color: var(--text-secondary); }
 
 .plan-card-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
   font-weight: 700;
-  background: rgba(35,134,54,0.2);
-  color: #3fb950;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: #516900;
   display: inline-block;
 }
-.plan-card-badge--pro { background: rgba(56,139,253,0.2); color: #58a6ff; }
+.plan-card-badge--pro { background: color-mix(in srgb, var(--accent) 35%, transparent); }
 
-.plan-actions { display: flex; gap: var(--space-sm); align-items: center; flex-wrap: wrap; }
+.plan-actions { display: flex; gap: 0.55rem; align-items: center; flex-wrap: wrap; }
 
 .btn-upgrade {
   width: 100%;
-  padding: 12px;
-  background: var(--color-info);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
 }
-.btn-upgrade:hover:not(:disabled) { opacity: 0.85; }
-.btn-upgrade:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-portal {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s;
+.billing-note { font-size: 0.85rem; }
+
+.billing-success-screen {
+  min-height: 100vh;
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
 }
-.btn-portal:hover:not(:disabled) { border-color: var(--color-info); color: var(--color-info); }
-.btn-portal:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.billing-note { font-size: 13px; }
+.billing-success-top {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+}
+
+.billing-success-card {
+  max-width: 520px;
+  width: 100%;
+  text-align: center;
+  padding: 2rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.billing-success-check {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  margin: 0 auto;
+  background: color-mix(in srgb, var(--accent) 40%, transparent);
+  color: #111111;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.billing-success-btn {
+  justify-self: center;
+  text-decoration: none;
+}

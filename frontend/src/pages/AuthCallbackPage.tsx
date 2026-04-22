@@ -57,8 +57,9 @@ export function AuthCallbackPage() {
   }, [navigate, setUser]);
 
   return (
-    <div className="loading-screen">
-      <p>Logging you in...</p>
+    <div className="callback-screen">
+      <div className="callback-spinner" />
+      <p>Connecting your GitHub account...</p>
     </div>
   );
 }

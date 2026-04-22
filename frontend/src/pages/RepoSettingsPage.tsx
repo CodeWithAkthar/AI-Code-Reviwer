@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../hooks/useTheme';
+import { AppShell } from '../components/AppShell';
 import '../styles/repos.css';
 
 interface Repo {
@@ -15,6 +18,9 @@ interface Repo {
 }
 
 export function RepoSettingsPage() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +35,11 @@ export function RepoSettingsPage() {
       .catch(err => setError(err.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   const toggleRepo = async (githubRepoId: string, currentState: boolean) => {
     setToggling(githubRepoId);
@@ -49,54 +60,68 @@ export function RepoSettingsPage() {
   if (isLoading) return <div className="loading-screen">Loading repos...</div>;
 
   return (
-    <div className="page">
-      <Link to="/dashboard" className="back-link">← Dashboard</Link>
-      <h1>Connected Repositories</h1>
-      <p className="text-secondary">
-        Control which repos trigger AI code reviews when a PR is opened.
-      </p>
+    <AppShell user={user} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme}>
+      <section className="repo-page">
+        <header className="repo-header">
+          <h1>Connected Repositories</h1>
+          <p className="text-secondary">
+            Control which repos trigger AI reviews when a PR is opened.
+          </p>
+        </header>
 
-      {error && <div className="error-card">{error}</div>}
+        {error && <div className="error-card">{error}</div>}
 
-      {repos.length === 0 ? (
-        <div className="empty-state">
-          <p>No repositories connected yet.</p>
-          <p className="text-secondary">Install the GitHub App on a repo to get started.</p>
-        </div>
-      ) : (
-        <div className="repos-list">
-          {repos.map((repo) => (
-            <div key={repo.githubRepoId} className="repo-card">
-              <div className="repo-info">
-                <p className="repo-name">{repo.fullName}</p>
-                <p className="text-secondary">{repo.reviewCount} review{repo.reviewCount !== 1 ? 's' : ''} total</p>
+        {repos.length === 0 ? (
+          <div className="empty-state">
+            <p>No repositories connected yet.</p>
+            <p className="text-secondary">Install the GitHub App on a repo to get started.</p>
+          </div>
+        ) : (
+          <div className="repos-list">
+            {repos.map((repo) => (
+              <div
+                key={repo.githubRepoId}
+                className={`card repo-card ${repo.isActive ? 'repo-card--active' : 'repo-card--paused'}`}
+              >
+                <div className="repo-info">
+                  <p className="repo-name">{repo.fullName}</p>
+                  <p className="text-secondary">{repo.reviewCount} review{repo.reviewCount !== 1 ? 's' : ''} total</p>
+                  <div className="repo-meta">
+                    <span className="badge repo-badge">{repo.isPrivate ? 'private' : 'public'}</span>
+                    {repo.installationId ? (
+                      <span className="text-secondary">Install #{repo.installationId}</span>
+                    ) : (
+                      <span className="text-secondary">GitHub App missing</span>
+                    )}
+                  </div>
+                </div>
+                {!repo.isAppInstalled ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline repo-enable-btn"
+                    onClick={() => {
+                      window.location.href = installUrl;
+                    }}
+                  >
+                    Enable Reviews
+                  </button>
+                ) : (
+                  <label className="toggle">
+                    <input
+                      type="checkbox"
+                      checked={repo.isActive}
+                      disabled={toggling === repo.githubRepoId}
+                      onChange={() => toggleRepo(repo.githubRepoId, repo.isActive)}
+                    />
+                    <span className="toggle-slider" />
+                    <span className="toggle-label">{repo.isActive ? 'Active' : 'Paused'}</span>
+                  </label>
+                )}
               </div>
-              {!repo.isAppInstalled ? (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => {
-                    window.location.href = installUrl;
-                  }}
-                >
-                  Enable Reviews
-                </button>
-              ) : (
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={repo.isActive}
-                    disabled={toggling === repo.githubRepoId}
-                    onChange={() => toggleRepo(repo.githubRepoId, repo.isActive)}
-                  />
-                  <span className="toggle-slider" />
-                  <span className="toggle-label">{repo.isActive ? 'Active' : 'Paused'}</span>
-                </label>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </AppShell>
   );
 }
