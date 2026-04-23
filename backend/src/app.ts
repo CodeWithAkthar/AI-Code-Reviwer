@@ -10,6 +10,7 @@ import { billingRouter } from './modules/billing/billing.routes';
 import { reviewRouter } from './modules/review/review.routes';
 
 const app = express();
+app.set('trust proxy', 1);
 
 // ---------------------------------------------------------------------------
 // Core middleware
